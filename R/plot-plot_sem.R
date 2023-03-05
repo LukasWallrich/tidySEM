@@ -1528,13 +1528,13 @@ match.call.defaults <- function(...) {
     df_edges$linetype[is.na(df_edges$curvature)] <- 1
   }
   if(any(df_edges$arrow == "curve")) stop("Arrow cannot be 'curve'.")
-  p <- .plot_edges_internal(p, df_edges)
+  p <- .plot_edges_internal(p, df_edges, text_size)
   # Add label and return ----------------------------------------------------
-  .plot_label_internal(p, df_label, text_size)
+  .plot_label_internal(p, df_label[!is.na(df_label$curvature), ], text_size)
 }
 
 #' @importFrom ggplot2 arrow
-.plot_edges_internal <- function(p, df){
+.plot_edges_internal <- function(p, df, text_size){
   # Prepare aesthetics ------------------------------------------------------
   if(!"linetype" %in% names(df)){
     df$linetype <- 2
@@ -1542,12 +1542,16 @@ match.call.defaults <- function(...) {
   }
   if(any(df$arrow != "none")){
     df_path <- df[!df$arrow == "none", ]
-    aes_args <- c("id", "arrow", "linetype", "size", "colour", "color", "alpha")
+    aes_args <- c("id", "arrow", "linetype", "size", "colour", "color", "alpha", "label")
     aes_args <- df_path[!duplicated(df_path$id), which(names(df_path) %in% aes_args)]
     Args <- list(
       data = df_path[, c("x", "y", "id")],
-      mapping = aes(x = .data[["x"]], y = .data[["y"]], group = .data[["id"]]),
+      mapping = aes(x = .data[["x"]], y = .data[["y"]], group = .data[["id"]], label = .data[["label"]]),
       arrow = quote(ggplot2::arrow(angle = 25, length = unit(.1, "inches"), ends = "last", type = "closed")))
+
+    if (!is.na(text_size)) {
+      Args$size <- text_size
+    }
 
     for(this_path in unique(df_path$id)){
       Args$data <- df_path[df_path$id == this_path, ]
@@ -1556,7 +1560,7 @@ match.call.defaults <- function(...) {
       if(nchar(argslist$linetype) == 1){
         argslist$linetype <- as.numeric(argslist$linetype)
       }
-      p <- p + do.call(geom_path, argslist)
+      p <- p + do.call(geomtextpath::geom_textpath, argslist)
     }
   }
   if(any(df$arrow == "none")){
